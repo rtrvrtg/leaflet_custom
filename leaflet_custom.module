@@ -1,0 +1,131 @@
+<?php
+/**
+ * @file
+ * Code for the Leaflet Custom Maps feature.
+ */
+
+include_once 'leaflet_custom.features.inc';
+
+/**
+ * Loads all available custom maps.
+ */
+function _leaflet_custom_load_all() {
+  $query = new EntityFieldQuery();
+  $query
+	  ->entityCondition('entity_type', 'leaflet_custom_map', '=')
+	  ->entityCondition('bundle', 'leaflet_custom_map', '=');
+  
+  $results = $query->execute();
+  $maps = array();
+
+  if(!empty($results)) {
+    $maps = entity_load('leaflet_custom_map', array_keys($results['leaflet_custom_map']));
+  }
+
+  return $maps;
+}
+
+/**
+ * Loads a single custom maps.
+ */
+function _leaflet_custom_load_one($entity_id) {
+  $query = new EntityFieldQuery();
+  $query
+    ->entityCondition('entity_type', 'leaflet_custom_map', '=')
+    ->entityCondition('bundle', 'leaflet_custom_map', '=')
+    ->propertyCondutuib('id', $entity_id);
+  
+  $results = $query->execute();
+  $maps = array();
+
+  if(!empty($results)) {
+    $maps = entity_load('leaflet_custom_map', array_keys($results['leaflet_custom_map']));
+  }
+
+  return reset($maps);
+}
+
+/**
+ * Implements hook_leaflet_map_info().
+ *
+ * Returns a list of custom maps for this module.
+ */
+function leaflet_custom_leaflet_map_info() {
+  global $language;
+
+  // $langcode = $language->language;
+  $langcode = LANGUAGE_NONE;
+
+  $map_info = array();
+
+  $map_entities = _leaflet_custom_load_all();
+
+  foreach ($map_entities as $map_entity) {
+    $map_info[$map_entity->title] = array(
+      'label' => $map_entity->title,
+      'description' => $map_entity->field_description[$langcode][0]['value'],
+      'settings' => array(
+        'minZoom' => $map_entity->field_minzoom[$langcode][0]['value'],
+        'maxZoom' => $map_entity->field_maxzoom[$langcode][0]['value'],
+        'dragging' => TRUE,
+        'touchZoom' => TRUE,
+        'scrollWheelZoom' => TRUE,
+        'doubleClickZoom' => TRUE,
+        'zoomControl' => TRUE,
+        'attributionControl' => TRUE,
+        'trackResize' => TRUE,
+        'fadeAnimation' => TRUE,
+        'zoomAnimation' => TRUE,
+        'closePopupOnClick' => TRUE,
+      ),
+      'layers' => array(
+        'earth' => array(
+          'urlTemplate' => $map_entity->field_url_template[$langcode][0]['value'],
+          'options' => array(
+            'attribution' => $map_entity->field_attribution[$langcode][0]['value'],
+          ),
+        ),
+      ),
+      'additional' => array(
+        'layers' => array(
+          'earth' => array(
+            'options' => array(
+              'tms' => TRUE,
+              'continuousWorld' => TRUE,
+              'noWrap' => TRUE,
+            ),
+          ),
+        ),
+      ),
+      'leaflet_custom_map_entity_id' => $map_entity->id,
+    );
+  }
+
+  return $map_info;
+}
+
+/**
+ * Implements hook_leaflet_map_prebuild_alter().
+ * Invoked by leaflet_build_map().
+ */
+function leaflet_custom_leaflet_map_prebuild_alter(&$settings) {
+  if (isset($settings['map']['additional'])) {
+    foreach ($settings['map']['additional'] as $item_key => $values) {
+      $settings['map'][$item_key] = array_merge_recursive(
+        $settings['map'][$item_key],
+        $values
+      );
+    }
+  }
+
+  /*
+  if (isset($settings['map']['leaflet_custom_map_entity_id'])) {
+    $entity_id = $settings['map']['leaflet_custom_map_entity_id']);
+    $map_entity = _leaflet_custom_load_one($entity_id);
+
+    if (!empty($entity_id)) {
+
+    }
+  }
+  */
+}
